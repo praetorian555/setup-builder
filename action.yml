@@ -48,7 +48,7 @@ runs:
       run: bash "$GITHUB_ACTION_PATH/scripts/install.sh"
 
     - if: inputs.cache-packages == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ steps.install.outputs.cache-dir }}
         key: builder-packages-${{ runner.os }}-${{ hashFiles('**/builder.json') }}

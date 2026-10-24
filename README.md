@@ -14,7 +14,7 @@ jobs:
         os: [ windows-2022, ubuntu-24.04 ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: praetorian555/setup-builder@v1
         with:
           version: 0.1.0
@@ -36,7 +36,7 @@ path, such as a newer clang installed from apt.llvm.org, and needs no `--toolcha
       matrix:
         compiler: [ g++-14, clang++-20 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - if: matrix.compiler == 'clang++-20'
         run: wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s 20
       - uses: praetorian555/setup-builder@v1
