@@ -10,8 +10,8 @@ inputs:
     description: The builder release to install, e.g. 0.1.0.
     required: true
   repository:
-    description: The GitHub repository whose releases hold the builder archives.
-    default: praetorian555/builder-releases
+    description: The GitHub repository whose builder-<version> releases hold the archives.
+    default: praetorian555/setup-builder
   sha256:
     description: >
       The archive's SHA-256 for this runner's host. Leave empty to check against the .sha256 file

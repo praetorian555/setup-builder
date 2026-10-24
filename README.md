@@ -1,7 +1,6 @@
 # setup-builder
 
-A GitHub Action that installs [builder](https://github.com/praetorian555/builder), the C++ build
-system, on a Windows or Linux runner. It downloads the release archive for the runner's host,
+A GitHub Action that installs builder, the C++ build system, on a Windows or Linux runner. It downloads the release archive for the runner's host,
 checks its SHA-256, puts `builder` on `PATH` for every later step, and keeps the packages builds
 fetch between runs, so a project's dependencies are not downloaded again on every job.
 
@@ -23,16 +22,39 @@ jobs:
       - run: builder test --config=Release --junit=reports
 ```
 
+On Windows builder finds the Visual Studio the image installs, and the Ninja that comes with it.
+
 On Linux the runner image has both GCC and clang on `PATH`, and builder does not choose between
-them, so every command there needs `--toolchain=gcc` or `--toolchain=clang`. On Windows builder
-finds the Visual Studio the image installs, and the Ninja that comes with it.
+them, so every command there names one. `--toolchain=gcc` or `--toolchain=clang` takes the
+image's default `g++` or `clang++`; `--compiler=<driver>` takes any other, by name on `PATH` or by
+path, such as a newer clang installed from apt.llvm.org, and needs no `--toolchain` beside it:
+
+```yaml
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        compiler: [ g++-14, clang++-20 ]
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.compiler == 'clang++-20'
+        run: wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s 20
+      - uses: praetorian555/setup-builder@v1
+        with:
+          version: 0.1.0
+      - run: builder build --config=Release --compiler=${{ matrix.compiler }}
+      - run: builder test --config=Release --compiler=${{ matrix.compiler }}
+```
+
+The Linux release links its C++ runtime statically and needs glibc 2.38 or newer: `ubuntu-24.04`
+and later runners.
 
 ## Inputs
 
 | Input            | Default                          | Meaning |
 |------------------|----------------------------------|---------|
 | `version`        | required                         | The builder release to install, such as `0.1.0`. |
-| `repository`     | `praetorian555/builder-releases` | The repository whose releases hold the archives. |
+| `repository`     | `praetorian555/setup-builder`    | The repository whose `builder-<version>` releases hold the archives. |
 | `sha256`         | empty                            | The archive's SHA-256 for this host. Empty checks the download against the `.sha256` file published next to it; set it to pin the archive yourself, which then needs a matrix value per host. |
 | `cache-packages` | `true`                           | Keep the package cache between runs with `actions/cache`, keyed on the project's `builder.json` files. |
 | `install-ninja`  | `true`                           | On Linux, install Ninja with apt when it is not on `PATH`. |
@@ -50,7 +72,9 @@ directory instead.
 
 ## What a release must look like
 
-The action expects each release, tagged `v<version>`, to carry one archive per host and a checksum
+Builder's releases live in this repository, beside the action's own. They are tagged
+`builder-<version>`, so they never collide with the action's `v<major>` tags, and are never marked
+latest, so the latest release stays the action's. Each carries one archive per host and a checksum
 file next to each:
 
 ```
@@ -62,7 +86,9 @@ builder-<version>-linux.tar.gz.sha256
 
 Each archive holds a single top-level directory, `builder-<version>-<host>/`, with the executable,
 `sdk/` and `toolchains/` directly inside it, the layout builder finds its own files in. A checksum
-file is the output of `sha256sum <archive>`: the hash, then the file name.
+file is the output of `sha256sum <archive>`: the hash, then the file name. Builder's
+`build-release.bat` and `build-release.sh` produce and publish exactly these, given this
+repository: `build-release.bat praetorian555/setup-builder`.
 
 ## How it works
 

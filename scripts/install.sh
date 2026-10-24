@@ -27,7 +27,8 @@ posix() {
 
 name="builder-$VERSION-$host"
 archive="$name.$ext"
-url="https://github.com/$REPOSITORY/releases/download/v$VERSION/$archive"
+# Builder releases are tagged builder-<version>, apart from the action's own v<major> tags.
+url="https://github.com/$REPOSITORY/releases/download/builder-$VERSION/$archive"
 root="$(posix "$RUNNER_TOOL_CACHE")/builder/$VERSION"
 dir="$root/$name"
 
