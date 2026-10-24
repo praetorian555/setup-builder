@@ -1,0 +1,52 @@
+name: Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The builder release to install
+        required: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the script
+        run: shellcheck scripts/install.sh
+      - name: Check the workflows
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  # Installs a real release, so it runs only when asked for one.
+  install:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2022, ubuntu-24.04 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup
+        uses: ./
+        with:
+          version: ${{ inputs.version }}
+      - name: Builder is on PATH in bash
+        shell: bash
+        run: builder --version
+      - name: Builder is on PATH in PowerShell
+        shell: pwsh
+        run: builder --version
+      - name: The outputs are set
+        shell: bash
+        run: |
+          test "${{ steps.setup.outputs.version }}" = "${{ inputs.version }}"
+          test -d "${{ steps.setup.outputs.path }}/sdk/include"
+          test -d "${{ steps.setup.outputs.path }}/toolchains"
+          test "$BUILDER_CACHE_DIR" = "${{ steps.setup.outputs.cache-dir }}"

@@ -1,0 +1,2 @@
+# Windows runners check out with autocrlf, and bash refuses a script with CRLF line endings.
+* text=auto eol=lf

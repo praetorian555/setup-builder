@@ -1,0 +1,55 @@
+name: Setup builder
+description: Download a builder release, verify it and put it on PATH, with an optional cache for the packages builds fetch.
+author: Marko Kostić
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  version:
+    description: The builder release to install, e.g. 0.1.0.
+    required: true
+  repository:
+    description: The GitHub repository whose releases hold the builder archives.
+    default: praetorian555/builder-releases
+  sha256:
+    description: >
+      The archive's SHA-256 for this runner's host. Leave empty to check against the .sha256 file
+      published next to the archive; set it to pin the download yourself.
+    default: ""
+  cache-packages:
+    description: Keep the packages builds fetch (BUILDER_CACHE_DIR) between runs with actions/cache.
+    default: "true"
+  install-ninja:
+    description: On Linux, install Ninja with apt when it is not on PATH already.
+    default: "true"
+
+outputs:
+  path:
+    description: The directory holding the builder executable.
+    value: ${{ steps.install.outputs.path }}
+  version:
+    description: The version the installed builder reports.
+    value: ${{ steps.install.outputs.version }}
+  cache-dir:
+    description: The package cache directory builds use.
+    value: ${{ steps.install.outputs.cache-dir }}
+
+runs:
+  using: composite
+  steps:
+    - id: install
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        REPOSITORY: ${{ inputs.repository }}
+        PINNED_SHA256: ${{ inputs.sha256 }}
+        INSTALL_NINJA: ${{ inputs.install-ninja }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/install.sh"
+
+    - if: inputs.cache-packages == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.install.outputs.cache-dir }}
+        key: builder-packages-${{ runner.os }}-${{ hashFiles('**/builder.json') }}
+        restore-keys: builder-packages-${{ runner.os }}-
