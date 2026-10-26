@@ -21,7 +21,7 @@ inputs:
     description: Keep the packages builds fetch (BUILDER_CACHE_DIR) between runs with actions/cache.
     default: "true"
   install-ninja:
-    description: On Linux, install Ninja with apt when it is not on PATH already.
+    description: On Linux and macOS, install Ninja with apt or Homebrew when it is not on PATH already.
     default: "true"
 
 outputs:

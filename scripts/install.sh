@@ -13,6 +13,7 @@ fail() {
 case "$RUNNER_OS" in
     Windows) host=win32 ext=zip exe=builder.exe ;;
     Linux) host=linux ext=tar.gz exe=builder ;;
+    macOS) host=macos ext=tar.gz exe=builder ;;
     *) fail "builder has no release for $RUNNER_OS" ;;
 esac
 
@@ -44,8 +45,14 @@ if [ ! -x "$dir/$exe" ]; then
         curl -fsSL --retry 3 -o "$work/$archive.sha256" "$url.sha256" || fail "cannot download $url.sha256"
         expected="$(cut -d ' ' -f 1 "$work/$archive.sha256")"
     fi
-    actual="$(sha256sum "$work/$archive" | cut -d ' ' -f 1)"
-    [ "${actual,,}" = "${expected,,}" ] || fail "$archive has SHA-256 $actual, expected $expected"
+    # macOS has shasum rather than sha256sum, and a bash too old for ${var,,}.
+    if command -v sha256sum > /dev/null; then
+        actual="$(sha256sum "$work/$archive" | cut -d ' ' -f 1)"
+    else
+        actual="$(shasum -a 256 "$work/$archive" | cut -d ' ' -f 1)"
+    fi
+    lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+    [ "$(lower "$actual")" = "$(lower "$expected")" ] || fail "$archive has SHA-256 $actual, expected $expected"
 
     mkdir -p "$work/content"
     if [ "$ext" = zip ]; then
@@ -62,10 +69,18 @@ fi
 reported="$("$dir/$exe" --version)"
 echo "Installed $reported"
 
-if [ "$RUNNER_OS" = Linux ] && [ "${INSTALL_NINJA:-true}" = true ] && ! command -v ninja > /dev/null; then
-    echo "Installing Ninja"
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq ninja-build
+if [ "${INSTALL_NINJA:-true}" = true ] && ! command -v ninja > /dev/null; then
+    case "$RUNNER_OS" in
+        Linux)
+            echo "Installing Ninja"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ninja-build
+            ;;
+        macOS)
+            echo "Installing Ninja"
+            brew install ninja
+            ;;
+    esac
 fi
 
 cache_dir="${BUILDER_CACHE_DIR:-$(native "$(posix "$RUNNER_TEMP")/builder-cache")}"

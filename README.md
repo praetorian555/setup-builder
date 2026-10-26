@@ -1,6 +1,6 @@
 # setup-builder
 
-A GitHub Action that installs builder, the C++ build system, on a Windows or Linux runner. It downloads the release archive for the runner's host,
+A GitHub Action that installs builder, the C++ build system, on a Windows, Linux or macOS runner. It downloads the release archive for the runner's host,
 checks its SHA-256, puts `builder` on `PATH` for every later step, and keeps the packages builds
 fetch between runs, so a project's dependencies are not downloaded again on every job.
 
@@ -11,7 +11,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ windows-2022, ubuntu-24.04 ]
+        os: [ windows-2022, ubuntu-24.04, macos-15 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -49,6 +49,10 @@ path, such as a newer clang installed from apt.llvm.org, and needs no `--toolcha
 The Linux release links its C++ runtime statically and needs glibc 2.38 or newer: `ubuntu-24.04`
 and later runners.
 
+On macOS builder finds Apple's clang and the macOS SDK through `xcrun`, from the Xcode the image
+selects, so a command needs no `--toolchain`. The macOS release is built for Apple silicon and
+needs macOS 15 or newer: `macos-15` and later runners.
+
 ## Inputs
 
 | Input            | Default                          | Meaning |
@@ -57,7 +61,7 @@ and later runners.
 | `repository`     | `praetorian555/setup-builder`    | The repository whose `builder-<version>` releases hold the archives. |
 | `sha256`         | empty                            | The archive's SHA-256 for this host. Empty checks the download against the `.sha256` file published next to it; set it to pin the archive yourself, which then needs a matrix value per host. |
 | `cache-packages` | `true`                           | Keep the package cache between runs with `actions/cache`, keyed on the project's `builder.json` files. |
-| `install-ninja`  | `true`                           | On Linux, install Ninja with apt when it is not on `PATH`. |
+| `install-ninja`  | `true`                           | On Linux and macOS, install Ninja with apt or Homebrew when it is not on `PATH`. |
 
 ## Outputs
 
@@ -82,13 +86,16 @@ builder-<version>-win32.zip
 builder-<version>-win32.zip.sha256
 builder-<version>-linux.tar.gz
 builder-<version>-linux.tar.gz.sha256
+builder-<version>-macos.tar.gz
+builder-<version>-macos.tar.gz.sha256
 ```
 
 Each archive holds a single top-level directory, `builder-<version>-<host>/`, with the executable,
 `sdk/` and `toolchains/` directly inside it, the layout builder finds its own files in. A checksum
 file is the output of `sha256sum <archive>`: the hash, then the file name. Builder's
 `build-release.bat` and `build-release.sh` produce and publish exactly these, given this
-repository: `build-release.bat praetorian555/setup-builder`.
+repository: `build-release.bat praetorian555/setup-builder`. The macOS archive comes from
+builder's `release-macos` workflow, which runs `build-release.sh` on a Mac.
 
 ## How it works
 
@@ -101,7 +108,7 @@ bash and in PowerShell.
 ## Testing
 
 `.github/workflows/test.yml` checks the script with shellcheck and the workflows with actionlint on
-every push. Installing a real release on both hosts runs only when started by hand from the Actions
+every push. Installing a real release on each host runs only when started by hand from the Actions
 tab with a version, since it needs a published release to download.
 
 ## License
